@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MQTT WebSocket Panel">
+  
+    <title>MQTT Web Panel</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.slate.css" rel="stylesheet">
+
+   <!-- override bootstrap -->
+        <style>
+                      h1 { font-size:44px !important; } 
+                      h2 { font-size:20px !important; } 
+                      .panel-title { color: white !important;}
+                      .my-box {
+                         
+                        }
+        </style>
+
+    <!-- jQuery -->
+    <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
+  
+    <!-- MQTT over Websockets -->
+    <script type="text/javascript" src="js/mqttws31.js"></script>
+
+     <!-- Handlebars template Engine -->
+     <script type="text/javascript" src="js/handlebars.min-latest.js"></script>
+
+  
+
+
+    <script type="text/javascript" src="conf.js"></script>
+
+    <script type="text/javascript">
+        var mainTemperatureTemplateScript;
+        var mainTemperatureTemplate;
+        var humidityTemplateScript;
+        var humidityTemplate;
+        var pressureTemplateScript;
+        var pressureTemplate;
+        var dewpointTemplateScript;
+        var dewpointTemplate;
+        var doorTemplateScript;
+        var doorTemplate;
+
+        var deviceNames = {};
+        var devicesNumber = {};
+        var devicesInitialTemperature = {};
+        var deviceNumberCounter = 1;
+        var mainDisplay = "5ccf7fa2c681" // Außentemperatur
+        var doorSensor = "Werkstatt"
+
+        // bad devices
+        devicesNumber["5ccf7fa2c6813,"] = 100;
+        devicesNumber["5ccf7fa2c6813'"] = 101;
+	var arduinoTempArray = {};
+	var arduinoTemp = new Array();
+
+        var client = new Messaging.Client(websocketserver, websocketport,
+                                "web_" + parseInt(Math.random() * 100, 10));
+
+        client.onConnectionLost = function (responseObject) {
+                $('#message').val("connection lost: " + responseObject.errorMessage);
+		//tempGauge.setLedColor(steelseries.LedColor.RED_LED); //change status LED to RED on broker disconnection
+        };
+
+        client.onMessageArrived = function (msg) {
+                //console.log("message arrived ..");
+                $('#message').val(msg.payloadString);
+
+                console.log("Destination: " + JSON.stringify(msg.destinationName));
+                var topicParts = msg.destinationName.split('/');
+                var device = topicParts[1];
+                var sensorInfo = topicParts[2];
+                var sensorInfoDetails = topicParts[3];
+
+                                // init devices ids for css
+                if ( !(device in devicesNumber) ) {
+
+                        // add handlebar template 
+                        addBox(deviceNumberCounter);
+                        // add device to internal list
+                        if ( device == mainDisplay ) {      
+                                devicesNumber[device] = 1;
+                                deviceNumberCounter++;
+                        } 
+                        else {      
+                                devicesNumber[device] = deviceNumberCounter++;
+                                //console.log("Device " + device + " is " + devicesNumber[device])
+                        }
+                }
+
+                switch (sensorInfo) {
+                case "$name":
+                        deviceNames[device] = msg.payloadString;                  
+                        _cssNumber = devicesNumber[device];
+                        _deviceName = deviceNames[device];
+                        //  console.log(_deviceName)
+                  
+                        console.log("Adding device " + msg.payloadString + " for " + device + " No " + _cssNumber);
+                        
+
+                        $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
+                        break;
+
+                case "humidity":
+                        if ( sensorInfoDetails == "percent"  ) {
+                                _cssNumber = devicesNumber[device];
+                                _deviceName = deviceNames[device];
+
+                                var context={ "number": _cssNumber  };
+                                var theCompiledHtml = humidityTemplate(context);
+                                $('.humidity-row-in-box-'+_cssNumber).html(theCompiledHtml);
+
+                              //  console.log(_deviceName)
+                                $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
+                                $('#humidityValue-'+_cssNumber).text(msg.payloadString + ' %');
+                                $('#humidityValue-'+_cssNumber).removeClass('').addClass('label-info');
+                                
+                                //console.log("Humidity for  " +_deviceName + " (" + _cssNumber + ") " + msg.payloadString);
+                        }
+                        break;
+                 case "dewpoint":
+                        if ( sensorInfoDetails == "degrees"  ) {
+                                _cssNumber = devicesNumber[device];
+                                _deviceName = deviceNames[device];
+
+                                var context={ "number": _cssNumber  };
+                                var theCompiledHtml = dewpointTemplate(context);
+                                $('.dewpoint-row-in-box-'+_cssNumber).html(theCompiledHtml);
+
+                              //  console.log(_deviceName)
+                                $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName)
+                                $('#headingDeviceNameLabel-'+_cssNumber).addClass('text-center');
+                                $('#dewpointValue-'+_cssNumber).text(msg.payloadString + ' °C');
+                                $('#dewpointValue-'+_cssNumber).removeClass('').addClass('label-default');
+                                
+                                //console.log("### Dewpoint for  " +_deviceName + " (" + _cssNumber + ") " + msg.payloadString);
+                        }
+                        break;
+                case "pressure":
+                        if ( sensorInfoDetails == "hPa"  ) {
+                                _cssNumber = devicesNumber[device];
+                                _deviceName = deviceNames[device];
+
+                                var context={ "number": _cssNumber  };
+                                var theCompiledHtml = pressureTemplate(context);
+                                $('.pressure-row-in-box-'+_cssNumber).html(theCompiledHtml);
+
+                              //  console.log(_deviceName)
+                                $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
+                                $('#pressureValue-'+_cssNumber).text(msg.payloadString + ' hPa');
+                                $('#pressureValue-'+_cssNumber).removeClass('').addClass('label-primary');
+                                
+                                //console.log("### Pressure for  " +_deviceName + " (" + _cssNumber + ") " + msg.payloadString);
+                        }
+                        break;
+                case "temperature":
+                      
+                        if ( sensorInfoDetails == "degrees"  ) {
+                                
+                                _cssNumber = devicesNumber[device];
+                                _deviceName = deviceNames[device];
+                                now = new Date(Date.now()).toLocaleString();
+                                //console.log(now)
+                                $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
+                                $('#temperatureValue-'+_cssNumber).text(msg.payloadString + ' °C');
+                                $('#temperatureValue-'+_cssNumber).removeClass('').addClass('label-warning');
+                                $('#lastMessageLabel-'+_cssNumber).text("Letzte Meldung: " + now);
+                                $('#lastMessageLabel-'+_cssNumber).addClass('text-right');
+                                
+                        } else if ( sensorInfoDetails == "degrees" ) { 
+                              //  console.log("remember initial temperature for " + device);
+                                devicesInitialTemperature[device] = msg.payloadString;
+                        } 
+                        break;
+                case "lastseen": // open status
+                        console.log(msg.payload);
+                        break;
+
+                case "door": // open status
+                        addDoorBox();
+                        if (msg.payloadString == '0') {         
+                                $('#door-state').text("ZU");     
+                                $('#door-state').removeClass('label-danger').addClass('label-success');
+                        } else {
+                                $('#door-state').text("OFFEN");
+                                $('#door-state').removeClass('label-success').addClass('label-danger');
+                        }
+                        $('#lastMessageLabel-door').text("Letzte Meldung: " + now);
+                         $('#lastMessageLabel-door').addClass('text-right');
+                        break;
+        	}
+         };
+
+         function addBox(number) {
+                console.log("Adding Box for  "+ number);
+                // Define our data object
+                var context={
+                        "number": number
+                };
+                var theCompiledHtml = mainTemperatureTemplate(context);
+                // Add the compiled html to the page
+                $('.temperature-box-'+number).html(theCompiledHtml);
+
+         }
+
+         function addDoorBox() {
+                console.log("Adding Door Box");
+                // Define our data object
+                var context={
+                        "number": "egal"
+                };
+                var theCompiledHtml = doorTemplate(context);
+                // Add the compiled html to the page
+                $('.door-box').html(theCompiledHtml);
+
+         }
+
+        var options = {
+                timeout: 3,
+                onSuccess: function () {
+                        $('#message').html('Connected to ' + websocketserver + ':' + websocketport);
+                        // Connection succeeded; subscribe to our topic
+                        client.subscribe(topic, {qos: 0});
+                        client.subscribe(ledtopic, {qos: 0});	
+                },
+                onFailure: function (message) {
+                        $('#message').html("Connection failed: " + message.errorMessage);
+	            }
+        };
+
+        function init() {
+                /* Connect to MQTT broker */
+                client.connect(options);
+                //console.log("Starting...");
+        }
+
+        $(document).ready(function() {
+                init();
+                // Grab & compile the template script
+                mainTemperatureTemplateScript = $("#temperature-template").html();
+                mainTemperatureTemplate = Handlebars.compile(mainTemperatureTemplateScript);
+
+                humidityTemplateScript = $("#humidity-template").html();
+                humidityTemplate = Handlebars.compile(humidityTemplateScript);
+
+                pressureTemplateScript = $("#pressure-template").html();
+                pressureTemplate = Handlebars.compile(pressureTemplateScript);
+
+                dewpointTemplateScript = $("#dewpoint-template").html();
+                dewpointTemplate = Handlebars.compile(dewpointTemplateScript);
+
+                doorTemplateScript = $("#door-template").html();
+                doorTemplate = Handlebars.compile(doorTemplateScript);
+
+                addBox(1); // for outside temperature (always the first)
+
+
+                });
+
+    </script>
+
+<!-- ################################################################################################ -->
+<!-- ##################################### Handlebar Scripts######################################### -->
+<!-- ################################################################################################ -->
+
+<!-- ##################################### Humidity ######################################### -->
+
+<script id="humidity-template" type="text/x-handlebars-template">
+                        <!-- Humidity Start -->
+                        <td style="text-align: right">
+                                <span class="text-right">Luftfeuchtigkeit:</span>
+                        </td>
+                        <td>
+                                <span id="humidityValue-{{{number}}}" class="label panel-title">N/A</span>   
+                        </td>
+                        <!-- Humdity End -->
+</script>
+
+
+<!-- ##################################### Pressure ######################################### -->
+<script id="pressure-template" type="text/x-handlebars-template">
+                        <!-- Pressure Start -->
+                        <td style="text-align: right">
+                                <span class="text-right">Luftdruck:</span>
+                        </td>
+                        <td>
+                                <span id="pressureValue-{{{number}}}" class="label panel-title">N/A</span>   
+                        </td>
+                         <!-- Pressure Start -->
+</script>
+
+
+<!-- ##################################### Dewpoint ######################################### -->
+<script id="dewpoint-template" type="text/x-handlebars-template">
+                        <!-- Dewpoint Start -->
+                        <td style="text-align: right">
+                                <span class="text-right">Taupunkt:</span>
+                        </td>
+                        <td>
+                                <span id="dewpointValue-{{{number}}}" class="label panel-title">N/A</span>   
+                        </td>
+                        <!-- Dewpoint End -->
+</script>
+
+
+<!-- ##################################### Door ######################################### -->
+<script id="door-template" type="text/x-handlebars-template">
+        <!-- Handlebar Script Start -->
+        <div class="col-md-2 col-sm-3 col-xs-4">
+                <table class="table table-condensed">
+                        <tr>
+                                <td style="text-align: center" colspan="2">
+                                        <h2>Tür Werkstatt</h2> 
+                                        <h1><span id="door-state" class="label">N/A</span></h1>
+                                        <br/>
+                                </td>
+                        </tr>
+                        <!-- tr>
+                                <td colspan="2" style="text-align: right" >
+                                        <sub id="lastMessageLabel-door">Letzte Meldung: N/A</sub>
+                                </td>
+                        </tr-->
+                </table>
+               
+                </div>
+         <!-- Handlebar Script End -->
+</script>
+
+<!-- ##################################### Main Template ######################################### -->
+<script id="temperature-template" type="text/x-handlebars-template">
+        <!-- Handlebar Script Start -->
+        <div class="col-md-2 col-sm-3 col-xs-4">
+                <table class="table table-condensed">
+                        <tr>
+                                <td style="text-align: center" colspan="2">
+                                        <h2><span id="headingDeviceNameLabel-{{{number}}}">Value</span></h2> 
+                                        <h1><span id="temperatureValue-{{{number}}}" class="label">N/A</span></h1>
+                                        <br/>
+                                </td>
+                        </tr>
+                        <!-- tr class="humidity-row-in-box-{{number}}"></tr>
+                        <tr class="pressure-row-in-box-{{number}}"></tr>
+                        <tr class="dewpoint-row-in-box-{{number}}"></tr -->
+                        <!-- tr>
+                                <td colspan="2" style="text-align: right" >
+                                        <sub id="lastMessageLabel-{{{number}}}">Letzte Meldung: N/A</sub>
+                                </td>
+                        </tr -->
+                </table>
+               
+                </div>
+         <!-- Handlebar Script End -->
+</script>
+
+
+
+</head>
+
+
+<!-- ################################################################################################ -->
+<!-- ########################################### HTML ############################################### -->
+<!-- ################################################################################################ -->
+
+<body>
+
+<!-- Stack the columns on mobile by making one full-width and the other half-width -->
+
+<div class="container">   
+        <div class="row">
+                <div class="my-box door-box"></div>
+                <div class="my-box temperature-box-1"></div>
+                <div class="my-box temperature-box-2"></div>
+                <div class="my-box temperature-box-3"></div>
+                <div class="my-box temperature-box-4"></div>
+                <div class="my-box temperature-box-5"></div>
+                <div class="my-box temperature-box-6"></div>
+                <div class="my-box temperature-box-7"></div>
+                <div class="my-box temperature-box-8"></div>
+                <div class="my-box temperature-box-9"></div>
+                <div class="my-box temperature-box-10"></div>
+                <div class="my-box temperature-box-11"></div>
+                <div class="my-box temperature-box-12"></div>
+                <div class="my-box temperature-box-13"></div>
+                                         
+        </div>
+</div>
+
+</body>
+</html>
