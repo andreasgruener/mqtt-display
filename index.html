@@ -12,12 +12,12 @@
 
    <!-- override bootstrap -->
         <style>
-                      h1 { font-size:56px !important; } 
-                      h2 { font-size:18px !important; } 
+                      h1 { font-size:144px !important; } 
+                      h2 { font-size:60px !important; } 
+                      h3 { font-size:40px !important; } 
+                      h4 { font-size:18px !important; } 
+                      h4 { font-size:12px !important; } 
                       .panel-title { color: white !important;}
-                      .my-box {
-                         
-                        }
         </style>
 
     <!-- jQuery -->
@@ -37,6 +37,8 @@
     <script type="text/javascript">
         var mainTemperatureTemplateScript;
         var mainTemperatureTemplate;
+        var mainTemplateScript;
+        var mainTemplate;
         var humidityTemplateScript;
         var humidityTemplate;
         var pressureTemplateScript;
@@ -49,26 +51,16 @@
         var deviceNames = {};
         var devicesNumber = {};
         var devicesInitialTemperature = {};
-        
-        var mainDisplay = "5ccf7fa2c681" // Außentemperatur
+        var deviceNumberCounter = 1;
+        var mainDisplay = "60019449885d" // Außentemperatur
+        var smallDisplay1 = "6001944981b0"; // Werkstatt
+        var smallDisplay2 = "2c3ae8222455"; // Warmwasser
+
         var doorSensor = "Werkstatt"
 
-        var deviceNumberCounter = 1;
-
-        // IMPORTANT add manual boxes in document.ready()()!
-     
-       devicesNumber["a020a6080a1d"] = 1; // Anton
-       devicesNumber["a020a6174ad1"] = 2; //  Werkstatt
-       devicesNumber["a020a6082af0"] = 3; // Greta
-       devicesNumber["a020a617b427"] = 9; // Wohnzimmer
-       var deviceNumberCounter = 4;
-
-        
         // bad devices
         devicesNumber["5ccf7fa2c6813,"] = 100;
         devicesNumber["5ccf7fa2c6813'"] = 101;
-        devicesNumber["5ccf7fa47b9e"] = 102;
-
 	var arduinoTempArray = {};
 	var arduinoTemp = new Array();
 
@@ -81,28 +73,42 @@
         };
 
         client.onMessageArrived = function (msg) {
-                //console.log("message arrived ..");
+                //console.log("message arrived .."+msg.payloadString);
                 $('#message').val(msg.payloadString);
 
                 //console.log("Destination: " + JSON.stringify(msg.destinationName));
                 var topicParts = msg.destinationName.split('/');
                 var device = topicParts[1];
                 var sensorInfo = topicParts[2];
-                var sensorInfoDetails = topicParts[3];
-                                // init devices ids for css
+                var sensorInfoDetails = sensorInfo != "lastseen" ? topicParts[3] : "";
+                
+                // init devices ids for css
                 if ( !(device in devicesNumber) ) {
-
+                        
+                       // console.log("Device " + device );
                         // add handlebar template 
-                        addBox(deviceNumberCounter);
-                        // add device to internal list
-                      /*  if ( device == mainDisplay ) {      
-                                devicesNumber[device] = 1;
-                                deviceNumberCounter++;
-                        } 
-                        else {    */  
+                        useIt = false;
+                        switch (device) {
+                                case mainDisplay:
+                                        addMainBox(deviceNumberCounter);
+                                        useIt = true;
+                                        break;
+                                case smallDisplay1:
+                                case smallDisplay2:
+                                        addBox(deviceNumberCounter);
+                                        useIt = true;
+                                        break;
+                                default:
+                                        // do nothing
+                                        break;
+                        }
+                       if ( useIt )  {
                                 devicesNumber[device] = deviceNumberCounter++;
-                        console.log("Device " + device + " is " + devicesNumber[device])
-                      //  }
+                                console.log("Device " + device + " is " + devicesNumber[device]);
+                       }
+                       else {
+                               return;
+                       }
                 }
 
                 switch (sensorInfo) {
@@ -117,72 +123,7 @@
 
                         $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
                         break;
-                case "lastseen":
-                        console.log("Lastseen " +msg.payloadString);
-                       
-                        _cssNumber = devicesNumber[device];
-                        _deviceName = deviceNames[device];
 
-                        d = new Date(msg.payloadString);
-                        $('#lastMessageLabel-'+_cssNumber).text("Letzte Meldung: " + d.toLocaleDateString("de-DE") + " " + d.toLocaleTimeString("de-DE"));
-                        // fuzzyDate(new Date(msg.payloadString)));
-                        $('#lastMessageLabel-'+_cssNumber).addClass('text-right');
-
-                        console.log("Lastseen for  " +_deviceName + " (" + _cssNumber + ") " );
-                        
-                        break;
-                case "humidity":
-                        if ( sensorInfoDetails == "percent"  ) {
-                                _cssNumber = devicesNumber[device];
-                                _deviceName = deviceNames[device];
-
-                                var context={ "number": _cssNumber  };
-                                var theCompiledHtml = humidityTemplate(context);
-                                $('.humidity-row-in-box-'+_cssNumber).html(theCompiledHtml);
-
-                              //  console.log(_deviceName)
-                                $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
-                                $('#humidityValue-'+_cssNumber).text(msg.payloadString + ' %');
-                                $('#humidityValue-'+_cssNumber).removeClass('').addClass('label-info');
-                                
-                                //console.log("Humidity for  " +_deviceName + " (" + _cssNumber + ") " + msg.payloadString);
-                        }
-                        break;
-                 case "dewpoint":
-                        if ( sensorInfoDetails == "degrees"  ) {
-                                _cssNumber = devicesNumber[device];
-                                _deviceName = deviceNames[device];
-
-                                var context={ "number": _cssNumber  };
-                                var theCompiledHtml = dewpointTemplate(context);
-                                $('.dewpoint-row-in-box-'+_cssNumber).html(theCompiledHtml);
-
-                              //  console.log(_deviceName)
-                                $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName)
-                                $('#headingDeviceNameLabel-'+_cssNumber).addClass('text-center');
-                                $('#dewpointValue-'+_cssNumber).text(msg.payloadString + ' °C');
-                                $('#dewpointValue-'+_cssNumber).removeClass('').addClass('label-default');
-                                
-                                //console.log("### Dewpoint for  " +_deviceName + " (" + _cssNumber + ") " + msg.payloadString);
-                        }
-                        break;
-                case "pressure":
-                        if ( sensorInfoDetails == "hPa"  ) {
-                                _cssNumber = devicesNumber[device];
-                                _deviceName = deviceNames[device];
-
-                                var context={ "number": _cssNumber  };
-                                var theCompiledHtml = pressureTemplate(context);
-                                $('.pressure-row-in-box-'+_cssNumber).html(theCompiledHtml);
-
-                              //  console.log(_deviceName)
-                                $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
-                                $('#pressureValue-'+_cssNumber).text(msg.payloadString + ' hPa');
-                                $('#pressureValue-'+_cssNumber).removeClass('').addClass('label-primary');
-                                
-                                //console.log("### Pressure for  " +_deviceName + " (" + _cssNumber + ") " + msg.payloadString);
-                        }
-                        break;
                 case "temperature":
                       
                         if ( sensorInfoDetails == "degrees"  ) {
@@ -193,61 +134,23 @@
                                 //console.log(now)
                                 $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
                                 $('#temperatureValue-'+_cssNumber).text(msg.payloadString + ' °C');
-                                $('#temperatureValue-'+_cssNumber).removeClass('').addClass('label-warning');
-                            
+                                
                         } else if ( sensorInfoDetails == "degrees" ) { 
                               //  console.log("remember initial temperature for " + device);
                                 devicesInitialTemperature[device] = msg.payloadString;
                         } 
                         break;
-              
-                case "door": // open status
-                        addDoorBox();
-                        if (msg.payloadString == '0') {         
-                                $('#door-state').text("ZU");     
-                                $('#door-state').removeClass('label-danger').addClass('label-success');
-                        } else {
-                                $('#door-state').text("OFFEN");
-                                $('#door-state').removeClass('label-success').addClass('label-danger');
-                        }
-                        //$('#lastMessageLabel-door').text("Letzte Meldung: " + now);
-                        // $('#lastMessageLabel-door').addClass('text-right');
+                case "lastseen": // open status
+                        console.log(msg.payloadString);
+                        _cssNumber = devicesNumber[device];
+                        _deviceName = deviceNames[device];
+                        lastseen = new Date(msg.payloadString).toLocaleString("de");
+                        console.log(lastseen)
+                        $('#deviceLastSeenLabel-'+_cssNumber).text(lastseen);
                         break;
+
         	}
          };
-
-         /** humand friendly date **/
-         function fuzzyDate(date) {
-                console.log(date);
-                var delta = Math.round((+new Date - date) / 1000);
-
-                var minute = 60,
-                hour = minute * 60,
-                day = hour * 24,
-                week = day * 7;
-
-                var fuzzy = 'zu lange her!';
-
-                if (delta < 30) {
-                  fuzzy = 'gerade eben';
-                } else if (delta < minute) {
-                   fuzzy = 'vor ' + delta + ' Sekunden';
-                } else if (delta < 2 * minute) {
-                    fuzzy = 'vor einer Minute.'
-                } else if (delta < hour) {
-                     fuzzy = 'vor ' + Math.floor(delta / minute) + ' Minuten';
-                } else if (Math.floor(delta / hour) == 1) {
-                      fuzzy = 'vor einer Stunde.'
-                } else if (delta < day) {
-                   fuzzy = 'vor ' + Math.floor(delta / hour) + ' Stunden';
-                } else if (delta < day * 2) {
-                  fuzzy = 'gestern';
-                } 
-                console.log(fuzzy);
-
-                return fuzzy;
-         }
-
 
          function addBox(number) {
                 console.log("Adding Box for  "+ number);
@@ -255,22 +158,21 @@
                 var context={
                         "number": number
                 };
-                var theCompiledHtml = mainTemperatureTemplate(context);
+              
                 // Add the compiled html to the page
+                var theCompiledHtml = mainTemperatureTemplate(context);
                 $('.temperature-box-'+number).html(theCompiledHtml);
 
          }
 
-         function addDoorBox() {
-                console.log("Adding Door Box");
+         function addMainBox(number) {
+                console.log("Adding Main Box 2");
                 // Define our data object
                 var context={
-                        "number": "egal"
-                };
-                var theCompiledHtml = doorTemplate(context);
-                // Add the compiled html to the page
-                $('.door-box').html(theCompiledHtml);
-
+                        "number": number
+                };                
+                var theCompiledHtml = mainTemplate(context);
+                $('.main-box').html(theCompiledHtml);
          }
 
         var options = {
@@ -295,26 +197,12 @@
         $(document).ready(function() {
                 init();
                 // Grab & compile the template script
+                mainTemplateScript = $("#main-template").html();
+                mainTemplate = Handlebars.compile(mainTemplateScript);
+
                 mainTemperatureTemplateScript = $("#temperature-template").html();
                 mainTemperatureTemplate = Handlebars.compile(mainTemperatureTemplateScript);
 
-                humidityTemplateScript = $("#humidity-template").html();
-                humidityTemplate = Handlebars.compile(humidityTemplateScript);
-
-                pressureTemplateScript = $("#pressure-template").html();
-                pressureTemplate = Handlebars.compile(pressureTemplateScript);
-
-                dewpointTemplateScript = $("#dewpoint-template").html();
-                dewpointTemplate = Handlebars.compile(dewpointTemplateScript);
-
-                doorTemplateScript = $("#door-template").html();
-                doorTemplate = Handlebars.compile(doorTemplateScript);
-
-                // manually added boxes
-                addBox(1); 
-                addBox(2);
-                addBox(3);
-                addBox(9);
                 });
 
     </script>
@@ -323,91 +211,27 @@
 <!-- ##################################### Handlebar Scripts######################################### -->
 <!-- ################################################################################################ -->
 
-<!-- ##################################### Humidity ######################################### -->
-
-<script id="humidity-template" type="text/x-handlebars-template">
-                        <!-- Humidity Start -->
-                        <td style="text-align: right">
-                                <span class="text-right">Luftfeuchtigkeit:</span>
-                        </td>
-                        <td>
-                                <span id="humidityValue-{{{number}}}" class="label panel-title">N/A</span>   
-                        </td>
-                        <!-- Humdity End -->
-</script>
 
 
-<!-- ##################################### Pressure ######################################### -->
-<script id="pressure-template" type="text/x-handlebars-template">
-                        <!-- Pressure Start -->
-                        <td style="text-align: right">
-                                <span class="text-right">Luftdruck:</span>
-                        </td>
-                        <td>
-                                <span id="pressureValue-{{{number}}}" class="label panel-title">N/A</span>   
-                        </td>
-                         <!-- Pressure Start -->
-</script>
-
-
-<!-- ##################################### Dewpoint ######################################### -->
-<script id="dewpoint-template" type="text/x-handlebars-template">
-                        <!-- Dewpoint Start -->
-                        <td style="text-align: right">
-                                <span class="text-right">Taupunkt:</span>
-                        </td>
-                        <td>
-                                <span id="dewpointValue-{{{number}}}" class="label panel-title">N/A</span>   
-                        </td>
-                        <!-- Dewpoint End -->
-</script>
-
-
-<!-- ##################################### Door ######################################### -->
-<script id="door-template" type="text/x-handlebars-template">
+<!-- ##################################### Temperature Template ######################################### -->
+<script id="temperature-template" type="text/x-handlebars-template">
         <!-- Handlebar Script Start -->
-        <div class="col-md-3 col-sm-6 col-xs-12">
-                <table class="table table-condensed">
-                        <tr>
-                                <td style="text-align: center" colspan="2">
-                                        <h2>Tür Werkstatt</h2> 
-                                        <h1><span id="door-state" class="label">N/A</span></h1>
-                                        <br/>
-                                </td>
-                        </tr>
+                <h3><span id="headingDeviceNameLabel-{{{number}}}">Value</span></h2> 
+                <h2><span id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
+                <h4><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
+                
 
-                </table>
-               
-                </div>
          <!-- Handlebar Script End -->
 </script>
 
 <!-- ##################################### Main Template ######################################### -->
-<script id="temperature-template" type="text/x-handlebars-template">
+<script id="main-template" type="text/x-handlebars-template">
         <!-- Handlebar Script Start -->
-        <div class="col-md-3 col-sm-6 col-xs-12">
-                <table class="table table-condensed">
-                        <tr>
-                                <td style="text-align: center" colspan="2">
-                                        <h2><span id="headingDeviceNameLabel-{{{number}}}">Value</span></h2> 
-                                        <h1><span id="temperatureValue-{{{number}}}" class="label">N/A</span></h1>
-                                        <br/>
-                                </td>
-                        </tr>
-                        <tr class="humidity-row-in-box-{{number}}"></tr>
-                        <tr class="pressure-row-in-box-{{number}}"></tr>
-                        <tr class="dewpoint-row-in-box-{{number}}"></tr>
-                        <tr>
-                                <td colspan="2" style="text-align: right" >
-                                        <sub id="lastMessageLabel-{{{number}}}">Letzte Meldung: N/A</sub>
-                                </td>
-                        </tr>
-                </table>
-               
-                </div>
-         <!-- Handlebar Script End -->
+                <h2><span id="time">12:12:00</span></h2> 
+                <h1><span id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
+                <h5><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
+        <!-- Handlebar Script End -->
 </script>
-
 
 
 </head>
@@ -423,20 +247,12 @@
 
 <div class="container">   
         <div class="row">
-                <div class="my-box door-box"></div>
-                <div class="my-box temperature-box-1"></div>
-                <div class="my-box temperature-box-2"></div>
-                <div class="my-box temperature-box-3"></div>
-                <div class="my-box temperature-box-4"></div>
-                <div class="my-box temperature-box-5"></div>
-                <div class="my-box temperature-box-6"></div>
-                <div class="my-box temperature-box-7"></div>
-                <div class="my-box temperature-box-8"></div>
-                <div class="my-box temperature-box-9"></div>
-                <div class="my-box temperature-box-10"></div>
-                <div class="my-box temperature-box-11"></div>
-                <div class="my-box temperature-box-12"></div>
-                <div class="my-box temperature-box-13"></div>
+               <!-- <div class="col-sm-6 my-box main-box" style="background-color: red;"></div> -->
+               <div class="col-sm-8 my-box main-box"></div>
+                <div class="col-sm-4 my-box temperature-box-2"></div>
+                <div class="col-sm-4 my-box temperature-box-3"></div>
+                
+
                                          
         </div>
 </div>
