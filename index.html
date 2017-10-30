@@ -245,8 +245,8 @@
 <script id="temperature-template" type="text/x-handlebars-template">
         <!-- Handlebar Script Start -->
                 <h3><span id="headingDeviceNameLabel-{{{number}}}">Value</span></h2> 
-                <h2><span class=".text.center" id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
-                <h5><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
+                <h2 class="text-center"><span class=".text.center" id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
+                <h5 class="text-right"><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
                 
 
          <!-- Handlebar Script End -->
@@ -256,9 +256,9 @@
 <script id="main-template" type="text/x-handlebars-template">
         <!-- Handlebar Script Start -->
                 <h3>Außentemperatur</h3>
-                <h1><span id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
+                <h1 class="text-center"><span id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
 
-                <h5><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
+                <h5 class="text-right"><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
         <!-- Handlebar Script End -->
 </script>
 
@@ -277,11 +277,11 @@
 <div class="container">   
         <div class="row">
                 <!-- <div class="col-sm-6 my-box main-box" style="background-color: red;"></div> -->
-                <div class="col-xs-12 col-12" style="color:white;background-color:#402519;"><h2>UH27 IoT</h2></div>
+                <div class="col-xs-12 col-12" style="color:white;background-color:#402519;"><h2 class="text-center">UH27 IoT</h2></div>
                 <div class="col-xs-12 col-12 main-box" style="background-color:#BF6E4C;"></div>
                 <div class="col-xs-6 col-6 temperature-box-2" style="background-color:#B2A8A3;"></div>
                 <div class="col-xs-6 col-6 temperature-box-3" style="background-color:#D9A894;"></div>    
-                <div class="col-xs-12 col-12" style="color:white;background-color:#402519;"><h5><span id="mytime">..loading</span></h5></div>                            
+                <div class="col-xs-12 col-12" style="color:white;background-color:#402519;"><h5 class="text-center">Aktuelle Uhrzeit: <span id="mytime">..loading</span></h5></div>                            
         </div>
 </div>
 
