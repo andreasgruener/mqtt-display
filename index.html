@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MQTT WebSocket Panel">
+  
+    <title>MQTT Web Panel</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.slate.css" rel="stylesheet">
+
+   <!-- override bootstrap -->
+        <style>
+                      h1 { font-size:160px !important; } 
+                      h2 { font-size:70px !important; } 
+                      h3 { font-size:20px !important; } 
+                      h4 { font-size:18px !important; } 
+                      h4 { font-size:12px !important; } 
+                      .panel-title { color: white !important;}
+        </style>
+
+    <!-- jQuery -->
+    <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
+  
+    <!-- MQTT over Websockets -->
+    <script type="text/javascript" src="js/mqttws31.js"></script>
+
+     <!-- Handlebars template Engine -->
+     <script type="text/javascript" src="js/handlebars.min-latest.js"></script>
+
+  
+
+
+    <script type="text/javascript" src="conf.js"></script>
+
+    <script type="text/javascript">
+        var mainTemperatureTemplateScript;
+        var mainTemperatureTemplate;
+        var mainTemplateScript;
+        var mainTemplate;
+        var humidityTemplateScript;
+        var humidityTemplate;
+        var pressureTemplateScript;
+        var pressureTemplate;
+        var dewpointTemplateScript;
+        var dewpointTemplate;
+        var doorTemplateScript;
+        var doorTemplate;
+
+        var deviceNames = {};
+        var devicesNumber = {};
+        var devicesInitialTemperature = {};
+        var deviceNumberCounter = 1;
+        var mainDisplay = "60019449885d" // Außentemperatur
+        var smallDisplay1 = "6001944981b0"; // Werkstatt
+        var smallDisplay2 = "2c3ae8222455"; // Warmwasser
+
+        var doorSensor = "Werkstatt"
+
+        // bad devices
+        devicesNumber["5ccf7fa2c6813,"] = 100;
+        devicesNumber["5ccf7fa2c6813'"] = 101;
+	var arduinoTempArray = {};
+	var arduinoTemp = new Array();
+
+        var client = new Messaging.Client(websocketserver, websocketport,
+                                "web_" + parseInt(Math.random() * 100, 10));
+
+        client.onConnectionLost = function (responseObject) {
+                $('#message').val("connection lost: " + responseObject.errorMessage);
+		//tempGauge.setLedColor(steelseries.LedColor.RED_LED); //change status LED to RED on broker disconnection
+        };
+
+        client.onMessageArrived = function (msg) {
+                //console.log("message arrived .."+msg.payloadString);
+                $('#message').val(msg.payloadString);
+
+                //console.log("Destination: " + JSON.stringify(msg.destinationName));
+                var topicParts = msg.destinationName.split('/');
+                var device = topicParts[1];
+                var sensorInfo = topicParts[2];
+                var sensorInfoDetails = sensorInfo != "lastseen" ? topicParts[3] : "";
+                
+                // init devices ids for css
+                if ( !(device in devicesNumber) ) {
+                        
+                       // console.log("Device " + device );
+                        // add handlebar template 
+                        useIt = false;
+                        switch (device) {
+                                case mainDisplay:
+                                        addMainBox(deviceNumberCounter);
+                                        useIt = true;
+                                        break;
+                                case smallDisplay1:
+                                case smallDisplay2:
+                                        addBox(deviceNumberCounter);
+                                        useIt = true;
+                                        break;
+                                default:
+                                        // do nothing
+                                        break;
+                        }
+                       if ( useIt )  {
+                                devicesNumber[device] = deviceNumberCounter++;
+                                console.log("Device " + device + " is " + devicesNumber[device]);
+                       }
+                       else {
+                               return;
+                       }
+                }
+
+                switch (sensorInfo) {
+                case "$name":
+                        deviceNames[device] = msg.payloadString;                  
+                        _cssNumber = devicesNumber[device];
+                        _deviceName = deviceNames[device];
+                        //  console.log(_deviceName)
+                  
+                        console.log("Adding device " + msg.payloadString + " for " + device + " No " + _cssNumber);
+                        
+
+                        $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
+                        break;
+
+                case "temperature":
+                      
+                        if ( sensorInfoDetails == "degrees"  ) {
+                                
+                                _cssNumber = devicesNumber[device];
+                                _deviceName = deviceNames[device];
+                                now = new Date(Date.now()).toLocaleString();
+                                //console.log(now)
+                                $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
+                                $('#temperatureValue-'+_cssNumber).text(formatTemperature(msg.payloadString) + '°C');
+                                
+                        } else if ( sensorInfoDetails == "degrees" ) { 
+                              //  console.log("remember initial temperature for " + device);
+                                devicesInitialTemperature[device] = msg.payloadString;
+                        } 
+                        break;
+                case "lastseen": // open status
+                        console.log(msg.payloadString);
+                        _cssNumber = devicesNumber[device];
+                        _deviceName = deviceNames[device];
+                        lastseen = new Date(msg.payloadString).toLocaleString("de");
+                        console.log(lastseen)
+                        $('#deviceLastSeenLabel-'+_cssNumber).text(lastseen);
+                        break;
+
+        	}
+         };
+         /** it's a string **/
+         function formatTemperature(temperature) {
+                var decimalPoint = temperature.indexOf(".");
+                return temperature.substr(0, decimalPoint);
+         }
+
+         function addBox(number) {
+                console.log("Adding Box for  "+ number);
+                // Define our data object
+                var context={
+                        "number": number
+                };
+              
+                // Add the compiled html to the page
+                var theCompiledHtml = mainTemperatureTemplate(context);
+                $('.temperature-box-'+number).html(theCompiledHtml);
+
+         }
+
+         function addMainBox(number) {
+                console.log("Adding Main Box 2");
+                // Define our data object
+                var context={
+                        "number": number
+                };                
+                var theCompiledHtml = mainTemplate(context);
+                $('.main-box').html(theCompiledHtml);
+         }
+
+        var options = {
+                timeout: 3,
+                onSuccess: function () {
+                        $('#message').html('Connected to ' + websocketserver + ':' + websocketport);
+                        // Connection succeeded; subscribe to our topic
+                        client.subscribe(topic, {qos: 0});
+                        client.subscribe(ledtopic, {qos: 0});	
+                },
+                onFailure: function (message) {
+                        $('#message').html("Connection failed: " + message.errorMessage);
+	            }
+        };
+
+        function init() {
+                /* Connect to MQTT broker */
+                client.connect(options);
+                //console.log("Starting...");
+        }
+
+        function updateClock ( )
+ 	{
+              
+                var currentTime = new Date ( );
+                var currentHours = currentTime.getHours ( );
+                var currentMinutes = currentTime.getMinutes ( );
+                var currentSeconds = currentTime.getSeconds ( );
+
+                // Pad the minutes and seconds with leading zeros, if required
+                currentHours = ( currentHours < 10 ) ? currentHours = "0"+currentHours : currentHours;
+                currentMinutes = ( currentMinutes < 10 ) ? currentMinutes = "0"+currentMinutes : currentMinutes;
+                currentSeconds = ( currentSeconds < 10 ) ? currentSeconds = "0"+currentSeconds : currentSeconds;
+     
+                // Compose the string for display
+                var currentTimeString = currentHours + ":" + currentMinutes + ":" + currentSeconds;
+                console.log("Updating..." + currentTimeString);
+  	
+   	        $("#mytime").html(currentTimeString);
+   	  	
+        }
+
+
+
+        $(document).ready(function() {
+                init();
+                // Grab & compile the template script
+                mainTemplateScript = $("#main-template").html();
+                mainTemplate = Handlebars.compile(mainTemplateScript);
+
+                mainTemperatureTemplateScript = $("#temperature-template").html();
+                mainTemperatureTemplate = Handlebars.compile(mainTemperatureTemplateScript);
+                setInterval('updateClock()', 1000);
+                });
+
+    </script>
+
+<!-- ################################################################################################ -->
+<!-- ##################################### Handlebar Scripts######################################### -->
+<!-- ################################################################################################ -->
+
+
+
+<!-- ##################################### Temperature Template ######################################### -->
+<script id="temperature-template" type="text/x-handlebars-template">
+        <!-- Handlebar Script Start -->
+                <h3><span id="headingDeviceNameLabel-{{{number}}}">Value</span></h2> 
+                <h2><span class=".text.center" id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
+                <h5><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
+                
+
+         <!-- Handlebar Script End -->
+</script>
+
+<!-- ##################################### Main Template ######################################### -->
+<script id="main-template" type="text/x-handlebars-template">
+        <!-- Handlebar Script Start -->
+                <h3>Außentemperatur</h3>
+                <h1><span id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
+
+                <h5><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
+        <!-- Handlebar Script End -->
+</script>
+
+
+</head>
+
+
+<!-- ################################################################################################ -->
+<!-- ########################################### HTML ############################################### -->
+<!-- ################################################################################################ -->
+
+<body>
+
+<!-- Stack the columns on mobile by making one full-width and the other half-width -->
+
+<div class="container">   
+        <div class="row">
+                <!-- <div class="col-sm-6 my-box main-box" style="background-color: red;"></div> -->
+                <div class="col-xs-12 col-12" style="color:white;background-color:#402519;"><h2>UH27 IoT</h2></div>
+                <div class="col-xs-12 col-12 main-box" style="background-color:#BF6E4C;"></div>
+                <div class="col-xs-6 col-6 temperature-box-2" style="background-color:#B2A8A3;"></div>
+                <div class="col-xs-6 col-6 temperature-box-3" style="background-color:#D9A894;"></div>    
+                <div class="col-xs-12 col-12" style="color:white;background-color:#402519;"><h5><span id="mytime">..loading</span></h5></div>                            
+        </div>
+</div>
+
+</body>
+</html>
