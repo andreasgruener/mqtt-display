@@ -13,7 +13,7 @@
    <!-- override bootstrap -->
         <style>
                       h1 { font-size:180px !important; } 
-                      h2 { font-size:80px !important; } 
+                      h2 { font-size:100px !important; } 
                       h3 { font-size:40px !important; } 
                       h4 { font-size:18px !important; } 
                       h4 { font-size:12px !important; } 
@@ -199,6 +199,30 @@
                 //console.log("Starting...");
         }
 
+        function updateClock ( )
+ 	{
+              
+                var currentTime = new Date ( );
+                var currentHours = currentTime.getHours ( );
+                var currentMinutes = currentTime.getMinutes ( );
+                var currentSeconds = currentTime.getSeconds ( );
+
+                // Pad the minutes and seconds with leading zeros, if required
+                currentMinutes = ( currentMinutes == 12 ) ? currentHours - 12 : currentHours;
+
+                // Convert an hours component of "0" to "12"
+                currentHours = ( currentHours == 0 ) ? 12 : currentHours;
+
+                // Compose the string for display
+                var currentTimeString = currentHours + ":" + currentMinutes + ":" + currentSeconds;
+                console.log("Updating..." + currentTimeString);
+  	
+   	        $("#mytime").html(currentTimeString);
+   	  	
+        }
+
+
+
         $(document).ready(function() {
                 init();
                 // Grab & compile the template script
@@ -207,7 +231,7 @@
 
                 mainTemperatureTemplateScript = $("#temperature-template").html();
                 mainTemperatureTemplate = Handlebars.compile(mainTemperatureTemplateScript);
-
+                setInterval('updateClock()', 1000);
                 });
 
     </script>
@@ -232,7 +256,7 @@
 <!-- ##################################### Main Template ######################################### -->
 <script id="main-template" type="text/x-handlebars-template">
         <!-- Handlebar Script Start -->
-                <h2><span id="time">12:12:00</span></h2> 
+                <h2><span id="mytime">12:12:00</span></h2> 
                 <h3>Außentemperatur</h3>
                 <h1><span id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
                 <h5><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
