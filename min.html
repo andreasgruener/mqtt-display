@@ -133,7 +133,7 @@
                                 now = new Date(Date.now()).toLocaleString();
                                 //console.log(now)
                                 $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
-                                $('#temperatureValue-'+_cssNumber).text(formatTemperature(msg.payloadString) + ' °C');
+                                $('#temperatureValue-'+_cssNumber).text(formatTemperature(msg.payloadString) + '°C');
                                 
                         } else if ( sensorInfoDetails == "degrees" ) { 
                               //  console.log("remember initial temperature for " + device);
@@ -208,11 +208,10 @@
                 var currentSeconds = currentTime.getSeconds ( );
 
                 // Pad the minutes and seconds with leading zeros, if required
-                currentMinutes = ( currentMinutes == 12 ) ? currentHours - 12 : currentHours;
-
-                // Convert an hours component of "0" to "12"
-                currentHours = ( currentHours == 0 ) ? 12 : currentHours;
-
+                currentHours = ( currentHours < 10 ) ? currentHours = "0"+currentHours : currentHours;
+                currentMinutes = ( currentMinutes < 10 ) ? currentMinutes = "0"+currentMinutes : currentMinutes;
+                currentSeconds = ( currentSeconds < 10 ) ? currentSeconds = "0"+currentSeconds : currentSeconds;
+     
                 // Compose the string for display
                 var currentTimeString = currentHours + ":" + currentMinutes + ":" + currentSeconds;
                 console.log("Updating..." + currentTimeString);
@@ -256,7 +255,7 @@
 <!-- ##################################### Main Template ######################################### -->
 <script id="main-template" type="text/x-handlebars-template">
         <!-- Handlebar Script Start -->
-                <h2><span id="mytime">12:12:00</span></h2> 
+                <h2><span id="mytime">..loading</span></h2> 
                 <h3>Außentemperatur</h3>
                 <h1><span id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
                 <h5><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
