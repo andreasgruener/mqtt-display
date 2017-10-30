@@ -12,8 +12,8 @@
 
    <!-- override bootstrap -->
         <style>
-                      h1 { font-size:134px !important; } 
-                      h2 { font-size:40px !important; } 
+                      h1 { font-size:160px !important; } 
+                      h2 { font-size:80px !important; } 
                       h3 { font-size:40px !important; } 
                       h4 { font-size:18px !important; } 
                       h4 { font-size:12px !important; } 
@@ -133,7 +133,7 @@
                                 now = new Date(Date.now()).toLocaleString();
                                 //console.log(now)
                                 $('#headingDeviceNameLabel-'+_cssNumber).text(_deviceName);
-                                $('#temperatureValue-'+_cssNumber).text(msg.payloadString + ' °C');
+                                $('#temperatureValue-'+_cssNumber).text(formatTemperature(msg.payloadString) + ' °C');
                                 
                         } else if ( sensorInfoDetails == "degrees" ) { 
                               //  console.log("remember initial temperature for " + device);
@@ -151,6 +151,11 @@
 
         	}
          };
+         /** it's a string **/
+         function formatTemperature(temperature) {
+                var decimalPoint = temperature.indexOf(".");
+                return temperature.substr(0, decimalPoint);
+         }
 
          function addBox(number) {
                 console.log("Adding Box for  "+ number);
@@ -218,7 +223,7 @@
         <!-- Handlebar Script Start -->
                 <h3><span id="headingDeviceNameLabel-{{{number}}}">Value</span></h2> 
                 <h2><span id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
-                <h4><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
+                <h5><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
                 
 
          <!-- Handlebar Script End -->
@@ -227,7 +232,7 @@
 <!-- ##################################### Main Template ######################################### -->
 <script id="main-template" type="text/x-handlebars-template">
         <!-- Handlebar Script Start -->
-                <h2><span id="time">12:12:00</span></h2> 
+                <h3>Uhrzeit: <span id="time">12:12:00</span></h2> 
                 <h1><span id="temperatureValue-{{{number}}}" style="color: white;">N/A</span></h1>
                 <h5><span id="deviceLastSeenLabel-{{{number}}}" >N/A</span></h1>
         <!-- Handlebar Script End -->
@@ -248,9 +253,9 @@
 <div class="container">   
         <div class="row">
                <!-- <div class="col-sm-6 my-box main-box" style="background-color: red;"></div> -->
-               <div class="col-sm-8 my-box main-box"></div>
-                <div class="col-sm-4 my-box temperature-box-2"></div>
-                <div class="col-sm-4 my-box temperature-box-3"></div>
+               <div class="col-sm-6 my-box main-box"></div>
+                <div class="col-sm-3 my-box temperature-box-2"></div>
+                <div class="col-sm-3 my-box temperature-box-3"></div>
                 
 
                                          
